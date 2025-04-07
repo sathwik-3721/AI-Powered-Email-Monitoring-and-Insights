@@ -6,8 +6,10 @@ from dotenv import load_dotenv
 # load the end
 load_dotenv()
 
+# define the required model
 model = OllamaLLM(model="gemma3")
 
+# sample prompt template
 template = """
 You are an expert in analyzing all the email data given to you, 
 Your task is to Look into the data given to you and answer the user's question in a formatted way

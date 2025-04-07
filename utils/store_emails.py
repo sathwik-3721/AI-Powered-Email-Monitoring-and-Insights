@@ -2,10 +2,12 @@ import json
 import os
 import re
 
+# removes any spl chars in file name
 def sanitize_filename(filename):
     """Sanitizes the filename by removing invalid characters."""
     return re.sub(r'[<>:"/\\|?*]', '_', filename).strip()
 
+# formatting the json output from the model
 def extract_valid_json(response):
     """Extracts and parses valid JSON from the model response, handling markdown formatting and invalid escape characters."""
     try:
@@ -28,6 +30,7 @@ def extract_valid_json(response):
         print(f"❌ Unicode Decode Error: {e}")
         return None
 
+# convert the emails into induvidual text files
 def store_emails_data(email_data_list):
     """Ensures email_data_list is a list and stores emails correctly."""
 

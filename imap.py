@@ -20,9 +20,11 @@ def fetch_all_emails():
         mail.select("INBOX")
         
         # search for all emails(read and unread)
-        status, messages = mail.search(None, "UNDELETED")
+        # in the search we can modify it by changing it from ALL --> complete inbox, UNSEEN --> new/unread emails
+        status, messages = mail.search(None, "ALL")
         email_ids = messages[0].split()
         
+        # empty list for storing all the emails
         emails = []
         
         for e_id in email_ids:

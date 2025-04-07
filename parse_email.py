@@ -7,33 +7,45 @@ from dotenv import load_dotenv
 # load the end
 load_dotenv()
 
+# select the req model
 model = OllamaLLM(model="gemma3")
 
-template = """You are an expert in transforming email data into informational insights. Your task is to convert the given raw email data into processed data into the below JSON format
-            The email data to be parsed is given at the end of the prompt.
+# define a prompt template with data to be passed
+template = """You are a highly skilled data analyst specializing in extracting actionable insights from email communications. 
+              Your primary task is to meticulously transform raw email data into a structured JSON format, providing a concise and informative representation of each email.
+              
+              ### **Objective**: Convert the provided raw email data into a JSON object adhering to the specified schema.
 
-            ### **Output JSON format:**
-            ```json
-            {{
+              ### **Output JSON format:**
+              ```json
+              {
                 "to": "receiver's email id",
                 "from": "sender email id",
                 "cc": "return any email id present in cc else null",
                 "bcc": "return any email id present in bcc else null",
                 "subject": "return the subject of the email",
                 "body": "return the exact body of the email if it does not contain any html content. If the body contains any html content, then return it in markdown format",
-                "tags": "Analyze the email and add tags/categories for the email like task, call, remainder etc. Select the tags from below given Points to remember"
-            }}
-            Points to be remembered:
-            1. **Do not alter/change/modify any email content unless it contains any html code**.
-            2. **If the email contains html content, then parse and understand it into simple text contents**
-            3. **Use only the following appropriate tags for the email - "Invoice, Order Confirmation, Payments, Meeting Invite/Calendar Invite, Meeting Update, Newsletter, Promotional / Marketing / Advertisement, Support Ticket Confirmation, Support Ticket Update, Banking, Travel, Health/Medical, Event/Registration, Approval Request, Approval Confirmation, Urgent/High priority, For review"
-            4. **Make sure to tag an email based on its content and tags must be added based on the tags which are provided in above point**. 
-            5. **Make sure to add their name followed by email id in their respective fields like to, from, cc and bcc.
-            6. **Return** your final output **as JSON** **
-
-            **Email Data** : {email_data}
-        """
-
+                "tags": "Analyze the email and assign relevant tags from the list below. Select the most appropriate tags based on the email's content.  Tags should be comma-separated."
+              }
+              ```           
+              ### **Important Guidelines & Constraints:**
+                - **Content Preservation: Absolutely do not modify or alter the original email content unless it contains HTML**. Maintain the original wording and formatting as closely as possible.
+                - **HTML Handling**: If the email contains HTML content, parse and convert it into a simple text format.** Ensure that the essence of the message is retained while removing any unnecessary HTML tags or attributes.
+                - **Tagging**: Use only the specified tags for categorizing the email. The tags are: "Invoice, Order Confirmation, Payments, Meeting Invite/Calendar Invite, Meeting Update, Newsletter, Promotional / Marketing / Advertisement, Support Ticket Confirmation, Support Ticket Update, Banking, Travel, Health/Medical, Event/Registration, Approval Request, Approval Confirmation, Urgent/High priority, For review". Ensure that the tags accurately reflect the content of the email.
+                - **Email Address Formatting**: Ensure that email addresses are formatted correctly. Include the name followed by the email ID in the respective fields (to, from, cc, bcc).
+                - **JSON Output**: **Strictly return your final output as a valid JSON object. Ensure the JSON is well-formed and easily parsable.**
+                - **Error Handling**: If any errors occur during processing, provide a clear and concise error message indicating the nature of the issue.
+                
+              ### **Points to Remember (Reiteration for Clarity):**
+                - ### **No Modification**: Preserve original email content.
+                - ### **HTML Parsing**: Extract plain text from HTML emails.
+                - ### **Limited Tags**: Use only the provided tag list.
+                - ### **Accurate Identification**: Correctly populate recipient fields.
+                - ### **JSON Format**: Return only valid JSON.
+                - ### **Error Reporting**: Clearly indicate any errors encountered.
+              **Email Data** : {email_data}
+          """
+          
 # create prompt template to pass the data
 prompt = ChatPromptTemplate.from_template(template)
 

@@ -18,7 +18,7 @@ template = """You are a highly skilled data analyst specializing in extracting a
 
               ### **Output JSON format:**
               ```json
-              {
+              {{
                 "to": "receiver's email id",
                 "from": "sender email id",
                 "cc": "return any email id present in cc else null",
@@ -26,7 +26,7 @@ template = """You are a highly skilled data analyst specializing in extracting a
                 "subject": "return the subject of the email",
                 "body": "return the exact body of the email if it does not contain any html content. If the body contains any html content, then return it in markdown format",
                 "tags": "Analyze the email and assign relevant tags from the list below. Select the most appropriate tags based on the email's content.  Tags should be comma-separated."
-              }
+              }}
               ```           
               ### **Important Guidelines & Constraints:**
                 - **Content Preservation: Absolutely do not modify or alter the original email content unless it contains HTML**. Maintain the original wording and formatting as closely as possible.

@@ -21,7 +21,7 @@ def fetch_all_emails():
         
         # search for all emails(read and unread)
         # in the search we can modify it by changing it from ALL --> complete inbox, UNSEEN --> new/unread emails
-        status, messages = mail.search(None, "ALL")
+        status, messages = mail.search(None, "UNSEEN")
         email_ids = messages[0].split()
         
         # empty list for storing all the emails
@@ -71,7 +71,10 @@ def fetch_all_emails():
                         "subject": subject,
                         "body": body
                     })
+            # mark the email as unseen
+            # mail.store(e_id, '-FLAGS', '\\Seen')
         
+        # close the mail connection and logout
         mail.close()
         mail.logout()
         

@@ -1,14 +1,33 @@
-from utils.store_emails import store_emails_data, extract_valid_json
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from utils.store_emails import store_emails_data
 from langchain_ollama.llms import OllamaLLM
+from pydantic import BaseModel, Field
 from imap import fetch_all_emails
 from dotenv import load_dotenv
+from typing import Optional
+import time
 
 # load the end
 load_dotenv()
+start_time = time.time()
+print(f"Started at {start_time}")
 
+# define a pydantic class to get structured output from the model
+class EmailResponse(BaseModel):
+    to: str = Field(..., description="Receiver's email id")
+    from_: str = Field(..., alias='from', description="Sender email id")
+    cc: Optional[str] = Field(..., description="Email id present in cc")
+    bcc: Optional[str] = Field(..., description="Email id present in bcc")
+    subject: str = Field(..., description="Subject of the email")
+    body: str = Field(..., description="Body of the email")
+    tags: list[str] = Field(..., description="Tags assigned to the email")
+    
 # select the req model
 model = OllamaLLM(model="gemma3")
+
+# set up a parser to get JSON output
+parser = PydanticOutputParser(pydantic_object=EmailResponse)
 
 # define a prompt template with data to be passed
 template = """You are a highly skilled data analyst specializing in extracting actionable insights from email communications. 
@@ -25,13 +44,13 @@ template = """You are a highly skilled data analyst specializing in extracting a
                 "bcc": "return any email id present in bcc else null",
                 "subject": "return the subject of the email",
                 "body": "return the exact body of the email if it does not contain any html content. If the body contains any html content, then return it in markdown format",
-                "tags": "Analyze the email and assign relevant tags from the list below. Select the most appropriate tags based on the email's content.  Tags should be comma-separated."
+                "tags": "Analyze the email and assign relevant tags from the list below. Select the most appropriate tags based on the email's content. The tags should be returned as a JSON list of strings. Example: `["Project Update", "Urgent/High priority"]"
               }}
               ```           
               ### **Important Guidelines & Constraints:**
                 - **Content Preservation: Absolutely do not modify or alter the original email content unless it contains HTML**. Maintain the original wording and formatting as closely as possible.
                 - **HTML Handling**: If the email contains HTML content, parse and convert it into a simple text format.** Ensure that the essence of the message is retained while removing any unnecessary HTML tags or attributes.
-                - **Tagging**: Use only the specified tags for categorizing the email. The tags are: "Invoice, Order Confirmation, Payments, Meeting Invite/Calendar Invite, Meeting Update, Newsletter, Promotional / Marketing / Advertisement, Support Ticket Confirmation, Support Ticket Update, Banking, Travel, Health/Medical, Event/Registration, Approval Request, Approval Confirmation, Urgent/High priority, For review". Ensure that the tags accurately reflect the content of the email.
+                - **Tagging**: Use only the specified tags for categorizing the email. The tags should be returned as a JSON list of strings. Example: `["Project Update", "Urgent/High priority"]. The tags are: "Invoice, Order Confirmation, Payments, Meeting Invite/Calendar Invite, Meeting Update, Newsletter, Promotional / Marketing / Advertisement, Support Ticket Confirmation, Support Ticket Update, Banking, Travel, Health/Medical, Event/Registration, Approval Request, Approval Confirmation, Urgent/High priority, For review, Project Update, Internal Anouncement, Report, Expense Report, IT Notification, HR". Ensure that the tags accurately reflect the content of the email.
                 - **Email Address Formatting**: Ensure that email addresses are formatted correctly. Include the name followed by the email ID in the respective fields (to, from, cc, bcc).
                 - **JSON Output**: **Strictly return your final output as a valid JSON object. Ensure the JSON is well-formed and easily parsable.**
                 - **Error Handling**: If any errors occur during processing, provide a clear and concise error message indicating the nature of the issue.
@@ -47,7 +66,7 @@ template = """You are a highly skilled data analyst specializing in extracting a
           """
           
 # create prompt template to pass the data
-prompt = ChatPromptTemplate.from_template(template)
+prompt = ChatPromptTemplate.from_template(template).partial(format_instructions=parser.get_format_instructions())
 
 # fetch the emails
 emails = fetch_all_emails()
@@ -60,25 +79,31 @@ print("prompt", prompt)
 processed_emails = []
 for email_data in emails:
     try:
-        # make a chain to pass the prompt to model
-        chain = prompt | model
+        # Make a chain to pass the prompt to the model along with the parser to get the required output
+        chain = prompt | model | parser
+        print("chain", chain)
 
-        # invoke the chain
+        # Invoke the chain
         result = chain.invoke({"email_data": email_data})
         print("result before parsing: ", result)
-
-        # remove the markdown content
-        parsed_email_data = result.replace("```json", "").replace("```", "").strip()
-        print("result after parsing: ", parsed_email_data)
-
-        email_json = extract_valid_json(parsed_email_data)
-        if email_json and isinstance(email_json, dict):
-           processed_emails.append(email_json)
-        else:
-            print("Invalid email response: ", email_json)
-            
-    except Exception as e:
-        print(f"❌ Error processing email in parse email: {e}") 
         
+        # remove the json markdown
+        if result.startswith("```json"):
+            result = result.replace("```json", "").replace("```", "").strip()
+        
+        print(f"Result after cleaning: {result}")
+
+        if isinstance(result, EmailResponse):
+          processed_emails.append(result.model_dump())
+        else:
+          print(f"❌ Invalid response format: {type(result)}")
+
+    except Exception as e:
+        print(f"❌ Error processing email in parse email: {e}")
+        
+print("Ended at ", time.time())
+print("Total time taken: ", time.time() - start_time)
+print("processed emails", processed_emails)
+
 # store the processed emails
 store_emails_data(processed_emails)

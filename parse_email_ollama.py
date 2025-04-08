@@ -1,12 +1,13 @@
+from utils.store_emails import store_emails_data, extract_valid_json
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from utils.store_emails import store_emails_data
 from langchain_ollama.llms import OllamaLLM
 from pydantic import BaseModel, Field
 from imap import fetch_all_emails
 from dotenv import load_dotenv
 from typing import Optional
 import time
+import json
 
 # load the end
 load_dotenv()
@@ -72,8 +73,8 @@ prompt = ChatPromptTemplate.from_template(template).partial(format_instructions=
 emails = fetch_all_emails()
 
 print("length", len(emails))
-print("emails", emails)
-print("prompt", prompt)
+print("emails", emails, end="\n\n")
+print("prompt", prompt, end="\n\n")
 
 # process email 
 processed_emails = []
@@ -85,18 +86,13 @@ for email_data in emails:
 
         # Invoke the chain
         result = chain.invoke({"email_data": email_data})
-        print("result before parsing: ", result)
-        
-        # remove the json markdown
-        if result.startswith("```json"):
-            result = result.replace("```json", "").replace("```", "").strip()
-        
-        print(f"Result after cleaning: {result}")
+
+        print("✅ Parsed result: ", result, end="\n\n")
 
         if isinstance(result, EmailResponse):
-          processed_emails.append(result.model_dump())
+            processed_emails.append(result.model_dump())
         else:
-          print(f"❌ Invalid response format: {type(result)}")
+            print(f"❌ Invalid response format: {type(result)}")
 
     except Exception as e:
         print(f"❌ Error processing email in parse email: {e}")
@@ -105,5 +101,5 @@ print("Ended at ", time.time())
 print("Total time taken: ", time.time() - start_time)
 print("processed emails", processed_emails)
 
-# store the processed emails
+# Store the processed emails
 store_emails_data(processed_emails)

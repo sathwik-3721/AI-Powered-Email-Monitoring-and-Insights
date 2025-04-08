@@ -72,7 +72,7 @@ def fetch_all_emails():
                         "body": body
                     })
             # mark the email as unseen
-            # mail.store(e_id, '-FLAGS', '\\Seen')
+            mail.store(e_id, '-FLAGS', '\\Seen')
         
         # close the mail connection and logout
         mail.close()

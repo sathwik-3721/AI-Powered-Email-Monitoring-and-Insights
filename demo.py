@@ -3,6 +3,7 @@ import imaplib
 import email
 from email.header import decode_header
 from dotenv import load_dotenv
+import re
 
 def fetch_all_emails():
     # load env
@@ -20,12 +21,12 @@ def fetch_all_emails():
         mail.select("INBOX")
         
         # search for all emails(read and unread)
-        # in the search we can modify it by changing it from ALL --> complete inbox, UNSEEN --> new/unread emails
         status, messages = mail.search(None, "ALL")
         email_ids = messages[0].split()
         
-        # empty list for storing all the emails
+        # empty lists for storing emails and calls
         emails = []
+        calls = []
         
         for e_id in email_ids:
             status, msg_data = mail.fetch(e_id, "(RFC822)")
@@ -63,14 +64,42 @@ def fetch_all_emails():
                     else:
                         body = msg.get_payload(decode=True).decode()
                     
-                    emails.append({
-                        "to": to_email,
-                        "from": from_email,
-                        "cc": cc_email,
-                        "bcc": bcc_email,
-                        "subject": subject,
-                        "body": body
-                    })
+                    # Check if the email is a meeting invite or call
+                    if "meeting" in subject.lower() or "call" in subject.lower() or "invite" in subject.lower():
+                        # Extract call details
+                        call_time = re.search(r"\b(\d{1,2}:\d{2}\s?(AM|PM)?)\b", body, re.IGNORECASE)
+                        call_time = call_time.group(0) if call_time else "N/A"
+
+                        meet_url = re.search(r"https?://[^\s]+", body)
+                        meet_url = meet_url.group(0) if meet_url else "N/A"
+
+                        attendees = re.findall(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", body)
+                        attendees = attendees if attendees else ["N/A"]
+
+                        agenda = re.search(r"agenda[:\-]?\s*(.*)", body, re.IGNORECASE)
+                        agenda = agenda.group(1).strip() if agenda else "N/A"
+
+                        client_name = re.search(r"client[:\-]?\s*(.*)", body, re.IGNORECASE)
+                        client_name = client_name.group(1).strip() if client_name else "N/A"
+
+                        calls.append({
+                            "from": from_email,
+                            "attendees": attendees,
+                            "client_name": client_name,
+                            "call_time": call_time,
+                            "agenda": agenda,
+                            "meet_url": meet_url
+                        })
+                    else:
+                        # Store as a regular email
+                        emails.append({
+                            "to": to_email,
+                            "from": from_email,
+                            "cc": cc_email,
+                            "bcc": bcc_email,
+                            "subject": subject,
+                            "body": body
+                        })
             # mark the email as unseen
             mail.store(e_id, '-FLAGS', '\\Seen')
         
@@ -78,21 +107,15 @@ def fetch_all_emails():
         mail.close()
         mail.logout()
         
-        return emails
+        return {"emails": emails, "calls": calls}
     except Exception as e:
         print(f"❌ Error fetching emails: {e}")
-        return []
+        return {"emails": [], "calls": []}
 
 # example 
 if __name__ == "__main__":
-    emails = fetch_all_emails()
-    print("length", len(emails))
-    print("Email data", emails, "type of ", type(emails))
-    for email_data in emails:
-        print(f"📧 To: {email_data['to']}")
-        print(f"📤 From: {email_data['from']}")
-        print(f"📨 CC: {email_data['cc']}")
-        print(f"📭 BCC: {email_data['bcc']}")
-        print(f"📌 Subject: {email_data['subject']}")
-        print(f"📝 Body: {email_data['body']}")
-        print("--------------------------------------------------")
+    data = fetch_all_emails()
+    print("Emails:", len(data["emails"]))
+    print("Calls:", len(data["calls"]))
+    print("Email Data:", data["emails"])
+    print("Call Data:", data["calls"])
